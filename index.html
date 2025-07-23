@@ -160,6 +160,9 @@
             width: 100px;
             padding: 5px;
             text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            position: relative;
         }
         #controls {
             margin-top: 20px;
@@ -189,24 +192,24 @@
     </div>
     <div class="wrapper" style="display: none;" id="trimmer">
         <div class="values">
-            <span id="range1">0.00</span>
-            <span> &dash; </span>
-            <span id="range2">100.00</span>
+            <span id="range1">00:00:000</span>
+            <span> ‐ </span>
+            <span id="range2">00:00:000</span>
         </div>
         <div class="container">
             <div class="slider-track"></div>
-            <input type="range" min="0" max="100" value="0" step="0.01" id="slider-1">
-            <input type="range" min="0" max="100" value="100" step="0.01" id="slider-2">
+            <input type="range" min="0" max="100" value="0" step="1" id="slider-1">
+            <input type="range" min="0" max="100" value="100" step="1" id="slider-2">
         </div>
         <div id="time-inputs">
-            <label>Start: <input type="number" id="start-input" step="0.01" min="0"></label>
-            <label>End: <input type="number" id="end-input" step="0.01" min="0"></label>
+            <label>Start: <input type="text" id="start-input"></label>
+            <label>End: <input type="text" id="end-input"></label>
         </div>
     </div>
     <div id="controls" style="display: none;">
         <button id="play-btn">Play Segment</button>
         <div id="loop-container">
-            <input type="checkbox" id="loop-check" checked> Loop
+            <input type="checkbox" id="loop-check"> Loop
         </div>
     </div>
 
@@ -226,7 +229,10 @@
             var url = document.getElementById('url-input').value;
             var videoId = getVideoId(url);
             if (videoId) {
-                createPlayer(videoId);
+                document.getElementById('trimmer').style.display = 'none';
+                document.getElementById('controls').style.display = 'none';
+                clearInterval(loopInterval);
+                loadVideo(videoId);
             } else {
                 alert('Invalid YouTube Shorts URL');
             }
@@ -238,28 +244,61 @@
             return match ? match[1] : null;
         }
 
-        function createPlayer(videoId) {
-            player = new YT.Player('player', {
-                height: '640',
-                width: '360',
-                videoId: videoId,
-                playerVars: {
-                    'playsinline': 1
-                },
-                events: {
-                    'onReady': onPlayerReady
-                }
-            });
+        function loadVideo(videoId) {
+            if (player) {
+                player.cueVideoById(videoId);
+            } else {
+                player = new YT.Player('player', {
+                    height: '640',
+                    width: '360',
+                    videoId: videoId,
+                    playerVars: {
+                        'playsinline': 1
+                    },
+                    events: {
+                        'onReady': onPlayerReady,
+                        'onStateChange': onPlayerStateChange
+                    }
+                });
+            }
         }
 
         function onPlayerReady(event) {
-            duration = event.target.getDuration();
+            setupVideo();
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.CUED) {
+                setupVideo();
+            }
+        }
+
+        function setupVideo() {
+            duration = player.getDuration();
             if (duration > 60) {
                 alert('This video is longer than 60 seconds. It might not be a Short.');
             }
             setupSlider();
             document.getElementById('trimmer').style.display = 'block';
             document.getElementById('controls').style.display = 'block';
+        }
+
+        function formatTime(time) {
+            let minutes = Math.floor(time / 60);
+            let seconds = Math.floor(time % 60);
+            let milliseconds = Math.floor((time - Math.floor(time)) * 1000);
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(3, '0')}`;
+        }
+
+        function parseTime(str) {
+            let parts = str.split(':');
+            if (parts.length !== 3) return NaN;
+            let min = parseInt(parts[0], 10) || 0;
+            let sec = parseInt(parts[1], 10) || 0;
+            let msPart = parts[2] || '0';
+            let msStr = msPart.padStart(3, '0').slice(0, 3);
+            let ms = parseInt(msStr, 10) / 1000;
+            return min * 60 + sec + ms;
         }
 
         function setupSlider() {
@@ -269,16 +308,14 @@
             var displayValTwo = document.getElementById("range2");
             var startInput = document.getElementById("start-input");
             var endInput = document.getElementById("end-input");
-            var minGap = 0.01;
+            var minGap = 0.001;
             var sliderTrack = document.querySelector(".slider-track");
             sliderOne.max = duration;
             sliderTwo.max = duration;
-            startInput.max = duration;
-            endInput.max = duration;
             sliderOne.value = 0;
             sliderTwo.value = duration;
-            startInput.value = 0.00;
-            endInput.value = duration.toFixed(2);
+            startInput.value = formatTime(0);
+            endInput.value = formatTime(duration);
             var sliderMaxValue = duration;
 
             function slideOne() {
@@ -287,10 +324,12 @@
                 if (val2 - val1 <= minGap) {
                     sliderOne.value = val2 - minGap;
                 }
-                displayValOne.textContent = parseFloat(sliderOne.value).toFixed(2);
-                startInput.value = parseFloat(sliderOne.value).toFixed(2);
+                displayValOne.textContent = formatTime(val1);
+                if (document.activeElement !== startInput) {
+                    startInput.value = formatTime(val1);
+                }
                 fillColor();
-                player.seekTo(parseFloat(sliderOne.value), true);
+                player.seekTo(val1, true);
             }
 
             function slideTwo() {
@@ -299,10 +338,11 @@
                 if (val2 - val1 <= minGap) {
                     sliderTwo.value = val1 + minGap;
                 }
-                displayValTwo.textContent = parseFloat(sliderTwo.value).toFixed(2);
-                endInput.value = parseFloat(sliderTwo.value).toFixed(2);
+                displayValTwo.textContent = formatTime(val2);
+                if (document.activeElement !== endInput) {
+                    endInput.value = formatTime(val2);
+                }
                 fillColor();
-                // Optionally seek to end, but maybe not
             }
 
             function fillColor() {
@@ -311,18 +351,46 @@
                 sliderTrack.style.background = `linear-gradient(to right, #dadae5 ${percent1}%, #3264fe ${percent1}%, #3264fe ${percent2}%, #dadae5 ${percent2}%)`;
             }
 
-            sliderOne.oninput = slideOne;
-            sliderTwo.oninput = slideTwo;
+            sliderOne.addEventListener('input', slideOne);
+            sliderTwo.addEventListener('input', slideTwo);
 
-            startInput.oninput = function() {
-                sliderOne.value = this.value;
-                slideOne();
-            };
+            startInput.addEventListener('input', function() {
+                let val = parseTime(this.value);
+                if (!isNaN(val)) {
+                    sliderOne.value = val;
+                    slideOne();
+                }
+            });
 
-            endInput.oninput = function() {
-                sliderTwo.value = this.value;
-                slideTwo();
-            };
+            startInput.addEventListener('blur', function() {
+                let val = parseTime(this.value);
+                if (!isNaN(val) && val >= 0 && val <= parseFloat(sliderTwo.value) - minGap) {
+                    this.value = formatTime(val);
+                    sliderOne.value = val;
+                    slideOne();
+                } else {
+                    this.value = formatTime(sliderOne.value);
+                }
+            });
+
+            endInput.addEventListener('input', function() {
+                let val = parseTime(this.value);
+                if (!isNaN(val)) {
+                    sliderTwo.value = val;
+                    slideTwo();
+                }
+            });
+
+            endInput.addEventListener('blur', function() {
+                let val = parseTime(this.value);
+                if (!isNaN(val) && val <= duration && val >= parseFloat(sliderOne.value) + minGap) {
+                    this.value = formatTime(val);
+                    sliderTwo.value = val;
+                    slideTwo();
+                } else {
+                    this.value = formatTime(sliderTwo.value);
+                }
+            });
 
             slideOne();
             slideTwo();
