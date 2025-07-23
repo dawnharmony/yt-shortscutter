@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Shorts Trimmer</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <style>
+        *,
+        *:before,
+        *:after {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        #input-container {
+            margin-bottom: 20px;
+        }
+        #url-input {
+            width: 400px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #load-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #player-container {
+            margin-bottom: 20px;
+        }
+        #player {
+            width: 360px;
+            height: 640px;
+        }
+        .wrapper {
+            position: relative;
+            width: 360px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .values {
+            background-color: #3264fe;
+            width: 40%;
+            position: relative;
+            margin: 0 auto 10px;
+            padding: 5px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 18px;
+            color: #ffffff;
+        }
+        .values:before {
+            content: "";
+            position: absolute;
+            height: 0;
+            width: 0;
+            border-top: 10px solid #3264fe;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            margin: auto;
+            bottom: -9px;
+            left: 0;
+            right: 0;
+        }
+        .container {
+            position: relative;
+            width: 100%;
+            height: 50px;
+            margin-top: 20px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 100%;
+            outline: none;
+            position: absolute;
+            margin: auto;
+            top: 0;
+            bottom: 0;
+            background-color: transparent;
+            pointer-events: none;
+        }
+        .slider-track {
+            width: 100%;
+            height: 5px;
+            position: absolute;
+            margin: auto;
+            top: 0;
+            bottom: 0;
+            border-radius: 5px;
+            background: #dadae5;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            -webkit-appearance: none;
+            height: 5px;
+        }
+        input[type="range"]::-moz-range-track {
+            -moz-appearance: none;
+            height: 5px;
+        }
+        input[type="range"]::-ms-track {
+            appearance: none;
+            height: 5px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 1.7em;
+            width: 1.7em;
+            background-color: #3264fe;
+            cursor: pointer;
+            margin-top: -9px;
+            pointer-events: auto;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            -webkit-appearance: none;
+            height: 1.7em;
+            width: 1.7em;
+            cursor: pointer;
+            border-radius: 50%;
+            background-color: #3264fe;
+            pointer-events: auto;
+        }
+        input[type="range"]::-ms-thumb {
+            appearance: none;
+            height: 1.7em;
+            width: 1.7em;
+            cursor: pointer;
+            border-radius: 50%;
+            background-color: #3264fe;
+            pointer-events: auto;
+        }
+        input[type="range"]:active::-webkit-slider-thumb {
+            background-color: #ffffff;
+            border: 3px solid #3264fe;
+        }
+        #time-inputs {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        #time-inputs input {
+            width: 100px;
+            padding: 5px;
+            text-align: center;
+        }
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #play-btn {
+            padding: 10px 20px;
+            background-color: #3264fe;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #loop-container {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>YouTube Shorts Trimmer</h1>
+    <div id="input-container">
+        <input type="text" id="url-input" placeholder="Enter YouTube Shorts URL">
+        <button id="load-btn">Load Video</button>
+    </div>
+    <div id="player-container">
+        <div id="player"></div>
+    </div>
+    <div class="wrapper" style="display: none;" id="trimmer">
+        <div class="values">
+            <span id="range1">0.00</span>
+            <span> &dash; </span>
+            <span id="range2">100.00</span>
+        </div>
+        <div class="container">
+            <div class="slider-track"></div>
+            <input type="range" min="0" max="100" value="0" step="0.01" id="slider-1">
+            <input type="range" min="0" max="100" value="100" step="0.01" id="slider-2">
+        </div>
+        <div id="time-inputs">
+            <label>Start: <input type="number" id="start-input" step="0.01" min="0"></label>
+            <label>End: <input type="number" id="end-input" step="0.01" min="0"></label>
+        </div>
+    </div>
+    <div id="controls" style="display: none;">
+        <button id="play-btn">Play Segment</button>
+        <div id="loop-container">
+            <input type="checkbox" id="loop-check" checked> Loop
+        </div>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Script -->
+    <script>
+        var player;
+        var duration = 0;
+        var loopInterval;
+
+        function onYouTubeIframeAPIReady() {
+            // API is ready
+        }
+
+        document.getElementById('load-btn').onclick = function() {
+            var url = document.getElementById('url-input').value;
+            var videoId = getVideoId(url);
+            if (videoId) {
+                createPlayer(videoId);
+            } else {
+                alert('Invalid YouTube Shorts URL');
+            }
+        };
+
+        function getVideoId(url) {
+            const regex = /(?:youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        function createPlayer(videoId) {
+            player = new YT.Player('player', {
+                height: '640',
+                width: '360',
+                videoId: videoId,
+                playerVars: {
+                    'playsinline': 1
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            duration = event.target.getDuration();
+            if (duration > 60) {
+                alert('This video is longer than 60 seconds. It might not be a Short.');
+            }
+            setupSlider();
+            document.getElementById('trimmer').style.display = 'block';
+            document.getElementById('controls').style.display = 'block';
+        }
+
+        function setupSlider() {
+            var sliderOne = document.getElementById("slider-1");
+            var sliderTwo = document.getElementById("slider-2");
+            var displayValOne = document.getElementById("range1");
+            var displayValTwo = document.getElementById("range2");
+            var startInput = document.getElementById("start-input");
+            var endInput = document.getElementById("end-input");
+            var minGap = 0.01;
+            var sliderTrack = document.querySelector(".slider-track");
+            sliderOne.max = duration;
+            sliderTwo.max = duration;
+            startInput.max = duration;
+            endInput.max = duration;
+            sliderOne.value = 0;
+            sliderTwo.value = duration;
+            startInput.value = 0.00;
+            endInput.value = duration.toFixed(2);
+            var sliderMaxValue = duration;
+
+            function slideOne() {
+                let val1 = parseFloat(sliderOne.value);
+                let val2 = parseFloat(sliderTwo.value);
+                if (val2 - val1 <= minGap) {
+                    sliderOne.value = val2 - minGap;
+                }
+                displayValOne.textContent = parseFloat(sliderOne.value).toFixed(2);
+                startInput.value = parseFloat(sliderOne.value).toFixed(2);
+                fillColor();
+                player.seekTo(parseFloat(sliderOne.value), true);
+            }
+
+            function slideTwo() {
+                let val1 = parseFloat(sliderOne.value);
+                let val2 = parseFloat(sliderTwo.value);
+                if (val2 - val1 <= minGap) {
+                    sliderTwo.value = val1 + minGap;
+                }
+                displayValTwo.textContent = parseFloat(sliderTwo.value).toFixed(2);
+                endInput.value = parseFloat(sliderTwo.value).toFixed(2);
+                fillColor();
+                // Optionally seek to end, but maybe not
+            }
+
+            function fillColor() {
+                let percent1 = (sliderOne.value / sliderMaxValue) * 100;
+                let percent2 = (sliderTwo.value / sliderMaxValue) * 100;
+                sliderTrack.style.background = `linear-gradient(to right, #dadae5 ${percent1}%, #3264fe ${percent1}%, #3264fe ${percent2}%, #dadae5 ${percent2}%)`;
+            }
+
+            sliderOne.oninput = slideOne;
+            sliderTwo.oninput = slideTwo;
+
+            startInput.oninput = function() {
+                sliderOne.value = this.value;
+                slideOne();
+            };
+
+            endInput.oninput = function() {
+                sliderTwo.value = this.value;
+                slideTwo();
+            };
+
+            slideOne();
+            slideTwo();
+        }
+
+        document.getElementById('play-btn').onclick = playSegment;
+
+        function playSegment() {
+            let start = parseFloat(document.getElementById("slider-1").value);
+            let end = parseFloat(document.getElementById("slider-2").value);
+            player.seekTo(start, true);
+            player.playVideo();
+            clearInterval(loopInterval);
+            loopInterval = setInterval(() => {
+                let current = player.getCurrentTime();
+                if (current >= end) {
+                    if (document.getElementById('loop-check').checked) {
+                        player.seekTo(start, true);
+                    } else {
+                        player.pauseVideo();
+                        clearInterval(loopInterval);
+                    }
+                }
+            }, 50);
+        }
+    </script>
+</body>
+</html>
